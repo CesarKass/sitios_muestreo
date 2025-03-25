@@ -283,7 +283,7 @@
       formData.append("password", config.password);
 
       try {
-        const response = await fetch("http://187.188.87.254:8090/dev/sitios_muestreo//form/puntos/listar_tablas.php", {
+        const response = await fetch("https://cors-anywhere.herokuapp.com/http://187.188.87.254:8090/dev/sitios_muestreo//form/puntos/listar_tablas.php", {
           method: "POST",
           body: formData
         });
@@ -317,7 +317,7 @@
 
 
       try {
-        const response = await fetch("http://187.188.87.254:8090/dev/sitios_muestreo//form/puntos/listar_tablas_mallas.php", {
+        const response = await fetch("https://cors-anywhere.herokuapp.com/http://187.188.87.254:8090/dev/sitios_muestreo//form/puntos/listar_tablas_mallas.php", {
           method: "POST",
           body: formData
         });
@@ -434,7 +434,7 @@
       formData.append("password", config.password);
 
       try {
-        const response = await fetch("http://187.188.87.254:8090/dev/sitios_muestreo/form/puntos/obtener_geojson.php", {
+        const response = await fetch("https://cors-anywhere.herokuapp.com/http://187.188.87.254:8090/dev/sitios_muestreo/form/puntos/obtener_geojson.php", {
           method: "POST",
           body: formData
         });
@@ -554,7 +554,7 @@
       formData.append("coordY", document.getElementById('coord_y_malla').value);
 
       try {
-        const response = await fetch("http://187.188.87.254:8090/dev/sitios_muestreo/form/puntos/obtener_geojson_malla.php", {
+        const response = await fetch("https://cors-anywhere.herokuapp.com/http://187.188.87.254:8090/dev/sitios_muestreo/form/puntos/obtener_geojson_malla.php", {
           method: "POST",
           body: formData
         });
@@ -671,7 +671,7 @@
       formData.append("observaciones", observaciones);
 
       try {
-        const response = await fetch("http://187.188.87.254:8090/dev/sitios_muestreo/form/puntos/agregar_punto.php", {
+        const response = await fetch("https://cors-anywhere.herokuapp.com/http://187.188.87.254:8090/dev/sitios_muestreo/form/puntos/agregar_punto.php", {
           method: "POST",
           body: formData
         });
