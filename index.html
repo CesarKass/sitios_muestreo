@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inicio - MiniSIG</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      background: #f0f0f0;
+    }
+    .container {
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+      max-width: 400px;
+      width: 100%;
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border-radius: 6px;
+      border: none;
+      background-color: #4CAF50;
+      color: white;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+    input {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+
+    .back-btn {
+      margin-top: 20px;
+      background-color: #777;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- Pantalla principal -->
+  <div id="main-menu">
+    <h2>¿Qué deseas hacer?</h2>
+    <button onclick="mostrarSeccion('punto')">Cargar Sitio (Punto)</button>
+    <button onclick="mostrarSeccion('poligono')">Cargar Polígono</button>
+    <button onclick="mostrarSeccion('bd')">Configuración de Base de Datos</button>
+  </div>
+
+  <!-- Ajustes para punto -->
+  <div id="punto" class="hidden">
+    <h2>Cargar Sitio</h2>
+    <button onclick="irAlMapa('punto')">Ir al Mapa</button>
+    <button class="back-btn" onclick="volverMenu()">← Volver</button>
+  </div>
+
+  <!-- Ajustes para polígono -->
+  <div id="poligono" class="hidden">
+    <h2>Cargar Polígono</h2>
+    <button onclick="irAlMapa('poligono')">Ir al Mapa</button>
+    <button class="back-btn" onclick="volverMenu()">← Volver</button>
+  </div>
+
+  <!-- Configuración de la base de datos -->
+  <div id="bd" class="hidden">
+    <h2>Configurar BD</h2>
+    <label>Host:</label>
+    <input type="text" id="host" placeholder="localhost" value="187.188.96.151">
+    <label>Usuario:</label>
+    <input type="text" id="usuario" placeholder="Usuario SIG">
+    <label>Contraseña:</label>
+    <input type="password" id="password">
+    <label>Base de datos:</label>
+    <input type="text" id="bdname" placeholder="Base de datos SIG">
+
+    <button onclick="guardarBD()">Guardar Configuración</button>
+    <button class="back-btn" onclick="volverMenu()">← Volver</button>
+  </div>
+
+</div>
+
+<script>
+  function mostrarSeccion(id) {
+    document.getElementById("main-menu").classList.add("hidden");
+    document.getElementById(id).classList.remove("hidden");
+  }
+
+  function volverMenu() {
+    document.querySelectorAll(".hidden").forEach(el => el.classList.add("hidden"));
+    document.getElementById("punto").classList.add("hidden");
+    document.getElementById("poligono").classList.add("hidden");
+    document.getElementById("bd").classList.add("hidden");
+    document.getElementById("main-menu").classList.remove("hidden");
+  }
+
+  function irAlMapa(tipo) {
+    // Guarda el tipo en localStorage para que el mapa sepa qué cargar
+    localStorage.setItem('configTipo', tipo);
+    if (tipo == "punto") {
+      window.location.href = "cargar_sitio.html";
+    }else if (tipo == "poligono") {
+      alert("apenas ando en eso :P");
+    }
+
+  }
+
+  function guardarBD() {
+    const configBD = {
+      host: document.getElementById('host').value,
+      usuario: document.getElementById('usuario').value,
+      password: document.getElementById('password').value,
+      bd: document.getElementById('bdname').value
+    };
+    localStorage.setItem('configBD', JSON.stringify(configBD));
+    alert('Configuración guardada correctamente');
+  }
+</script>
+
+</body>
+</html>

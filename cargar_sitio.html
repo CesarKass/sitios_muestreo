@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cargar sitios de muestreo</title>
+
+  <!-- Select2 CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
+
+
+  <!-- CSS DataTables -->
+  <link rel="stylesheet" href="https://cdn.datatables.net/1.13.10/css/jquery.dataTables.min.css">
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    html,
+    body,
+    #map {
+      height: 65vh;
+      width: 100%;
+      margin: 2;
+      padding: 2;
+    }
+
+    #coords {
+      /* position: absolute; */
+      /* bottom: 10px; */
+      /* left: 10px; */
+      background: rgba(255, 255, 255, 0.9);
+      padding: 8px;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 14px;
+    }
+  </style>
+</head>
+
+<body>
+  <button class="back-btn" onclick="window.history.back()">← Volver</button>
+  <input type="text" id="dbname" placeholder="Nombre de la base de datos" disabled />
+
+  <select id="selectTablas" style="width: 300px;">
+    <option value="">Cargando tablas...</option>
+  </select>
+
+  <button onclick="buscargeojson()">Buscar</button>
+
+  <br>
+  <hr>
+  <button onclick="obtenerUbicacion()" style="
+  padding: 5px;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 6px;">Mi ubicación</button>
+
+  <!-- Botón fijo -->
+  <button onclick="mostrarFormulario()" id="mostrarFormulario_btn" style="
+  padding: 5px;
+  background: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  display: none;
+  cursor: pointer;
+">Agregar marcador sitio de muestreo</button>
+
+  <button id="borrarMarcador_btn" style="
+  padding: 5px;
+  background: #5b5b5b;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  display: none;
+  cursor: pointer;
+  ">Borrar marcador</button>
+   <hr>
+  Mallas
+  <select name="mallas" id="mallas"></select>
+  <input type="range" id="rango_malla" value="500" min="1" max="20000" oninput="this.nextElementSibling.value = this.value">
+  <output>24</output> metros
+    <input type="hidden" id="coord_x_malla">
+    <input type="hidden" id="coord_y_malla">
+  <button id="malla_btn" style="
+  padding: 5px;
+  background: #5b5b5b;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  display: none;
+  cursor: pointer;
+  ">seleccionar Malla</button>
+
+
+  <!-- Formulario flotante -->
+  <div id="formularioSitio" style="
+    display: none;
+    position: absolute;
+    top: 60px;
+    right: 10px;
+    background: white;
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.2);
+    z-index: 1000;
+  ">
+    <label>Folio:</label>
+    <input type="text" id="folio"><br><br>
+
+    <label>No. de sitio:</label>
+    <input type="text" id="no_sitio"><br><br>
+
+    <label>Plantas vivas:</label>
+    <input type="number" id="p_vivas"><br><br>
+
+    <label>Plantas muertas:</label>
+    <input type="number" id="p_muertas"><br><br>
+
+    <label>Total de plantas:</label>
+    <input type="number" id="total_p"><br><br>
+
+    <label>% Sobrevive:</label>
+    <input type="number" id="sobrevive" step="any"><br><br>
+
+    <label>Distancia:</label>
+    <input type="text" id="distancia"><br><br>
+
+    <label>Altura (cm):</label>
+    <input type="number" id="altura_cm"><br><br>
+
+    <label>Diámetro (mm):</label>
+    <input type="number" id="diam_mm"><br><br>
+
+    <label>MSNM:</label>
+    <input type="number" id="msnm" step="any"><br><br>
+
+    <label>Coordenada X:</label>
+    <input type="number" id="coord_x" step="any"><br><br>
+
+    <label>Coordenada Y:</label>
+    <input type="number" id="coord_y" step="any"><br><br>
+
+    <label>Especie:</label>
+    <input type="text" id="especie"><br><br>
+
+
+    <button onclick="guardarSitio()">Guardar</button>
+    <button onclick="cerrarFormulario()">Cancelar</button>
+  </div>
+
+  <hr>
+  <div id="map" style="z-index: 5;"></div>
+  <div id="coords">Toque el mapa para ver coordenadas UTM</div>
+
+  <div style="margin: 20px; padding: 20px;">
+    <table id="tablaDinamica" class="display" style="width:90%">
+      <thead>
+          <tr id="columnas"></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <!-- Proj4 para conversión a UTM -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.8.0/proj4.js"></script>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <!-- Select2 JS -->
+  <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+  <!-- JS DataTables -->
+  <script src="https://cdn.datatables.net/1.13.10/js/jquery.dataTables.min.js"></script>
+
+  <script>
+    // Crear el mapa
+    const map = L.map('map').setView([20.0, -100.0], 6); // Centro aproximado de zona 14N
+
+    // Capas base
+    const capaOSM = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    });
+
+    const capaSatelital = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: '© Esri, Maxar, Earthstar Geographics'
+    });
+
+    const googleHybrid = L.tileLayer('http://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}',{
+        maxZoom: 20,
+        subdomains:['mt0','mt1','mt2','mt3']
+    });
+
+    const googleStreets = L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}',{
+        maxZoom: 20,
+        subdomains:['mt0','mt1','mt2','mt3']
+    });
+
+    // Agregar capa base inicial al mapa
+    capaSatelital.addTo(map);
+
+    // Capas base disponibles
+    const capasBase = {
+        "Mapa Satelital": capaSatelital,
+        "OpenStreetMap": capaOSM,
+        "Google Streets": googleStreets,
+        "Google Hybrid": googleHybrid,
+    };
+    // Objeto para almacenar capas dinámicas (se irá actualizando)
+    const capasDinamicas = {};
+    // Control de capas (base y dinámicas)
+    const controlCapas = L.control.layers(capasBase, capasDinamicas).addTo(map);
+
+
+    let marker = null;
+
+    // Definir proyección UTM zona 14N
+    const utm14n = "+proj=utm +zone=14 +datum=WGS84 +units=m +no_defs";
+    const wgs84 = "+proj=longlat +datum=WGS84 +no_defs";
+
+    map.on('click', function (e) {
+      const { lat, lng } = e.latlng;
+
+      // Convertir a UTM
+      const [x, y] = proj4(wgs84, utm14n, [lng, lat]);
+
+      // Colocar marcador
+      if (marker) {
+        marker.setLatLng([lat, lng]);
+      } else {
+        marker = L.marker([lat, lng]).addTo(map);
+      }
+
+      // Mostrar coordenadas
+      document.getElementById('coords').innerHTML = `
+      <strong>UTM Zona 14N:</strong><br>
+      Este (E): ${x.toFixed(2)} m<br>
+      Norte (N): ${y.toFixed(2)} m
+    `;
+      document.getElementById('mostrarFormulario_btn').style.display = 'inline-block';
+      document.getElementById('borrarMarcador_btn').style.display = 'inline-block';
+      document.getElementById('malla_btn').style.display = 'inline-block';
+      console.log(`UTM (Zona 14N): E: ${x}, N: ${y}`);
+      document.getElementById('coord_x_malla').value = lat;
+      document.getElementById('coord_y_malla').value = lng;
+    });
+
+    // Borrar marcador
+    document.getElementById('borrarMarcador_btn').addEventListener('click', function () {
+      if (marker) {
+        map.removeLayer(marker);
+        marker = null;
+        document.getElementById('coords').innerHTML = '';
+        document.getElementById('borrarMarcador_btn').style.display = 'none';
+        document.getElementById('mostrarFormulario_btn').style.display = 'none';
+      }
+    });
+
+    // malla buscar
+    document.getElementById('malla_btn').addEventListener('click', function () {
+      buscarMalla();
+    });
+
+
+
+
+    async function cargarTablas() {
+      const config = JSON.parse(localStorage.getItem('configBD'));
+      document.getElementById("dbname").value = config.bd;
+      if (!config) {
+        alert("No se ha encontrado configuración de la base de datos.");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("dbname", config.bd);
+      formData.append("user", config.usuario);
+      formData.append("password", config.password);
+
+      try {
+        const response = await fetch("http://187.188.87.254:8090/dev/sitios_muestreo//form/puntos/listar_tablas.php", {
+          method: "POST",
+          body: formData
+        });
+
+        const data = await response.json(); // espera que tu PHP devuelva JSON
+
+        const select = document.getElementById("selectTablas");
+        select.innerHTML = ""; // limpia opciones
+        document.getElementById("selectTablas").innerHTML = "<option>Seleccionar tabla</option>";
+
+        if (Array.isArray(data.tables) && data.tables.length > 0) {
+          data.tables.forEach(tabla => {
+            const option = document.createElement("option");
+            option.value = tabla;
+            option.textContent = tabla;
+            select.appendChild(option);
+          });
+        } else {
+          select.innerHTML = "<option>No se encontraron tablas</option>";
+        }
+
+        $("#selectTablas").select2({
+          placeholder: "Selecciona una tabla...",
+          allowClear: true
+        });
+
+      } catch (error) {
+        console.error("Error al cargar las tablas:", error);
+        document.getElementById("selectTablas").innerHTML = "<option>Error al conectar</option>";
+      }
+
+
+      try {
+        const response = await fetch("http://187.188.87.254:8090/dev/sitios_muestreo//form/puntos/listar_tablas_mallas.php", {
+          method: "POST",
+          body: formData
+        });
+
+        const data = await response.json(); // espera que tu PHP devuelva JSON
+
+        const select = document.getElementById("mallas");
+        select.innerHTML = ""; // limpia opciones
+        document.getElementById("mallas").innerHTML = "<option>Seleccionar mallas</option>";
+
+        if (Array.isArray(data.tables) && data.tables.length > 0) {
+          data.tables.forEach(tabla => {
+            const option = document.createElement("option");
+            option.value = tabla;
+            option.textContent = tabla;
+            select.appendChild(option);
+          });
+        } else {
+          select.innerHTML = "<option>No se encontraron mallas</option>";
+        }
+
+        $("#mallas").select2({
+          placeholder: "Selecciona una mallas...",
+          allowClear: true
+        });
+
+      } catch (error) {
+        console.error("Error al cargar las mallas:", error);
+        document.getElementById("mallas").innerHTML = "<option>Error al conectar</option>";
+      }
+    }
+ 
+
+    function obtenerUbicacion() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+
+            // Centrar el mapa
+            map.setView([lat, lng], 16);
+
+            // Convertir a UTM
+            const [x, y] = proj4(wgs84, utm14n, [lng, lat]);
+
+            // Colocar marcador si no existe
+            if (!marker) {
+              marker = L.marker([lat, lng]).addTo(map);
+            } else {
+              marker.setLatLng([lat, lng]);
+            }
+
+            // Mostrar coordenadas UTM
+            document.getElementById('coords').innerHTML = `
+          <strong>Ubicación actual (UTM Zona 14N):</strong><br>
+          Este (E): ${x.toFixed(2)} m<br>
+          Norte (N): ${y.toFixed(2)} m
+        `;
+
+            console.log(`Ubicación actual - Lat: ${lat}, Lng: ${lng}`);
+          },
+          (error) => {
+            console.warn("No se pudo obtener la ubicación: ", error.message);
+          }
+        );
+      } else {
+        alert("Tu navegador no soporta geolocalización.");
+      }
+    }
+
+
+  
+
+    window.onload = () => {
+      cargarTablas();
+      obtenerUbicacion();
+    };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    //capas
+
+    let tabla_data; 
+    let capaGeojson = null;
+    async function buscargeojson() {
+      // const tabla = this.value;
+      const tabla = document.getElementById('selectTablas').value;;
+      console.log(tabla);
+
+      if (!tabla) return;
+
+      const config = JSON.parse(localStorage.getItem('configBD'));
+      const formData = new FormData();
+      formData.append("tabla", tabla);
+      formData.append("dbname", config.bd);
+      formData.append("user", config.usuario);
+      formData.append("password", config.password);
+
+      try {
+        const response = await fetch("http://187.188.87.254:8090/dev/sitios_muestreo/form/puntos/obtener_geojson.php", {
+          method: "POST",
+          body: formData
+        });
+
+      
+        
+        const geojson = await response.json();
+        // console.log(geojson);
+        // Quitar capa anterior si existe
+        if (capaGeojson) {
+          map.removeLayer(capaGeojson);
+        }
+
+        // Agregar nueva capa GeoJSON
+        // Dentro de buscargeojson(), modifica así:
+        if (capaGeojson) {
+            map.removeLayer(capaGeojson);
+            controlCapas.removeLayer(capaGeojson);
+        }
+
+        capaGeojson = L.geoJSON(geojson.geojson, {
+          pointToLayer: function (feature, latlng) {
+            return L.circleMarker(latlng, {
+              radius: 8,
+              fillColor: "#0078FF",
+              color: "#003B70",
+              weight: 1,
+              opacity: 1,
+              fillOpacity: 0.8
+            });
+          },
+          onEachFeature: function (feature, layer) {
+            if (feature.properties) {
+              let popup = '';
+              for (const key in feature.properties) {
+                popup += `<strong>${key}:</strong> ${feature.properties[key]}<br>`;
+              }
+              layer.bindPopup(popup);
+            }
+          }
+        }).addTo(map);
+
+        // Ajustar vista al nuevo geojson
+        map.fitBounds(capaGeojson.getBounds());
+
+        // Añade esta nueva capa al control dinámico
+        const nombreCapa = document.getElementById('selectTablas').value;
+        controlCapas.addOverlay(capaGeojson, nombreCapa);
+
+        // Ajustar vista
+        map.fitBounds(capaGeojson.getBounds());
+
+
+
+       // Si hay datos, genera columnas dinámicas
+       if (geojson.datos_tabla.length > 0) {
+        const columnas = Object.keys(geojson.datos_tabla[0]);
+        
+        // Destruye DataTable anterior si existe
+        if ($.fn.DataTable.isDataTable('#tablaDinamica')) {
+            tabla_data.clear().destroy();
+        }
+
+        // Reconstruye completamente el <thead> para evitar duplicados
+        let thead = $('#tablaDinamica thead');
+        thead.empty(); // limpia totalmente el contenido del thead
+        let tr = $('<tr></tr>');
+        columnas.forEach(col => {
+            tr.append(`<th>${col}</th>`);
+        });
+        thead.append(tr);
+
+        // Inicializa DataTables nuevamente
+        tabla_data = $('#tablaDinamica').DataTable({
+            data: geojson.datos_tabla,
+            columns: columnas.map(col => ({ data: col })),
+            order: [[0, 'desc']], 
+            language: {
+                url: "//cdn.datatables.net/plug-ins/1.13.10/i18n/es-ES.json"
+            }
+        });
+      } else {
+          alert('No hay datos disponibles.');
+      }
+
+
+
+        
+
+
+
+
+      } catch (error) {
+        console.error("Error al cargar la capa:", error);
+        // alert("Error al cargar la capa. Revisa la consola.");
+      }
+    };
+
+
+    // let capaMallaGeojson = null;
+    async function buscarMalla() {
+      // const tabla = this.value;
+      const tabla = document.getElementById('mallas').value;
+      const rango = document.getElementById('rango_malla').value;
+      
+
+      if (!tabla) return;
+
+      const config = JSON.parse(localStorage.getItem('configBD'));
+      const formData = new FormData();
+      formData.append("tabla", tabla);
+      formData.append("dbname", config.bd);
+      formData.append("user", config.usuario);
+      formData.append("password", config.password);
+      formData.append("rango_metros", rango);
+      formData.append("coordX", document.getElementById('coord_x_malla').value);
+      formData.append("coordY", document.getElementById('coord_y_malla').value);
+
+      try {
+        const response = await fetch("http://187.188.87.254:8090/dev/sitios_muestreo/form/puntos/obtener_geojson_malla.php", {
+          method: "POST",
+          body: formData
+        });
+
+      
+        
+        const geojson = await response.json();
+        console.log(geojson);
+       
+
+        // Agregar nueva capa GeoJSON
+        // Dentro de buscargeojson(), modifica así:
+        if (capaGeojson[tabla]) {
+          map.removeLayer(capaGeojson[tabla]);
+            controlCapas.removeLayer(capaGeojson[tabla]);
+            delete capaGeojson[tabla];
+        }
+
+        capaGeojson[tabla] = L.geoJSON(geojson.geojson, {
+          pointToLayer: function (feature, latlng) {
+            return L.circleMarker(latlng, {
+              radius: 8,
+              fillColor: "#ff4500",
+              color: "#ff3800",
+              weight: 1,
+              opacity: 1,
+              fillOpacity: 0.8
+            });
+          },
+          onEachFeature: function (feature, layer) {
+            if (feature.properties) {
+              let popup = '';
+              for (const key in feature.properties) {
+                popup += `<strong>${key}:</strong> ${feature.properties[key]}<br>`;
+              }
+              layer.bindPopup(popup);
+            }
+          }
+        }).addTo(map);
+
+        // Ajustar vista al nuevo geojson
+        // map.fitBounds(capaGeojson[tabla].getBounds());
+
+        // Añade esta nueva capa al control dinámico
+        // const nombreCapa = document.getElementById('mallas').value;
+        // controlCapas.addOverlay(capaGeojson[tabla], nombreCapa);
+        controlCapas.addOverlay(capaGeojson[tabla], tabla);
+
+        // Ajustar vista
+        map.fitBounds(capaGeojson[tabla].getBounds());
+
+  
+
+      } catch (error) {
+        console.error("Error al cargar la capa:", error);
+        // alert("Error al cargar la capa. Revisa la consola.");
+      }
+    };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    function mostrarFormulario() {
+      if (!marker) {
+        alert("Primero coloca un punto en el mapa.");
+        return;
+      }
+      document.getElementById('formularioSitio').style.display = 'block';
+    }
+
+    function cerrarFormulario() {
+      document.getElementById('formularioSitio').style.display = 'none';
+    }
+
+    async function guardarSitio() {
+      const nombre = document.getElementById('nombreSitio').value;
+      const observaciones = document.getElementById('observacionesSitio').value;
+
+      if (!nombre.trim()) {
+        alert("El nombre del sitio es obligatorio.");
+        return;
+      }
+
+      // Obtener coordenadas del marcador
+      const { lat, lng } = marker.getLatLng();
+      const config = JSON.parse(localStorage.getItem('configBD'));
+      const tabla = document.getElementById('selectTablas').value;
+
+      if (!tabla) {
+        alert("Selecciona una tabla para guardar el sitio.");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("tabla", tabla);
+      formData.append("dbname", config.bd);
+      formData.append("user", config.usuario);
+      formData.append("password", config.password);
+      formData.append("lat", lat);
+      formData.append("lng", lng);
+      formData.append("nombre", nombre);
+      formData.append("observaciones", observaciones);
+
+      try {
+        const response = await fetch("http://187.188.87.254:8090/dev/sitios_muestreo/form/puntos/agregar_punto.php", {
+          method: "POST",
+          body: formData
+        });
+
+        const resultado = await response.text();
+        alert(resultado);
+        cerrarFormulario();
+      } catch (error) {
+        console.error("Error al guardar el punto:", error);
+        alert("Error al guardar el punto.");
+      }
+    }
+
+
+
+  </script>
+
+</body>
+
+</html>
